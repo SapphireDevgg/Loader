@@ -1,7 +1,3 @@
--- Roblox Place-ID-only Loader (Luau)
--- Features: Wait for player & map load, FPS boost, loadstring/load fallback, no GUI
-
--- == CONFIG == --
 local URLs = {
     ["pixel-blade"]       = "https://raw.githubusercontent.com/SapphireDevgg/Loader/refs/heads/main/pixel-blade.lua.txt",
     ["my-fishing-pier"]   = "https://raw.githubusercontent.com/SapphireDevgg/Loader/refs/heads/main/My-fishing-Pier.lua.txt",
@@ -24,7 +20,6 @@ local PlaceIdMap = {
     ["build-an-island"]   = { 101949297449238 },
 }
 
--- == REVERSE LOOKUP ==
 local placeToKey = {}
 for key, idList in pairs(PlaceIdMap) do
     for _, pid in ipairs(idList) do
@@ -32,7 +27,6 @@ for key, idList in pairs(PlaceIdMap) do
     end
 end
 
--- == UTILS ==
 local function http_get(url)
     if game.HttpGet then
         local ok, res = pcall(function() return game:HttpGet(url) end)
@@ -68,30 +62,6 @@ local function run_code(src)
     return true
 end
 
-local function fps_boost()
-    -- Remove textures/decals
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Texture") or v:IsA("Decal") then
-            v:Destroy()
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v.Lifetime = NumberRange.new(0)
-            v.Rate = 0
-        elseif v:IsA("Explosion") then
-            v.Visible = false
-        end
-    end
-    -- Lighting tweaks
-    local Lighting = game:GetService("Lighting")
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 1e10
-    Lighting.Brightness = 1
-    -- Clear debris often
-    game:GetService("Debris"):ClearAllChildren()
-    -- Set LOD for terrain
-    workspace.LevelOfDetail = Enum.LevelOfDetailSetting.Low
-end
-
--- == WAIT FOR LOAD ==
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
@@ -104,18 +74,14 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-if lp.Character == nil or not lp.Character:FindFirstChild("HumanoidRootPart") then
+if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then
     lp.CharacterAdded:Wait()
 end
 
--- Simple wait for workspace map parts to exist
 repeat
-    task.wait()
-until #workspace:GetChildren() > 10
+    task.wait(0.5)
+until #workspace:GetChildren() > 15
 
-fps_boost()
-
--- == MAIN ==
 local placeId = game.PlaceId
 local key = placeToKey[placeId]
 if not key then
@@ -130,10 +96,20 @@ if not ok or not src then
     return
 end
 
-local ran, err = run_code(src)
-if not ran then
-    lp:Kick("Script error: " .. tostring(err))
-    return
+task.wait(1)
+
+if src:match("^%s*loadstring") then
+    local ran, err = pcall(function() loadstring(src)() end)
+    if not ran then
+        lp:Kick("Script error: " .. tostring(err))
+        return
+    end
+else
+    local ran, err = run_code(src)
+    if not ran then
+        lp:Kick("Script error: " .. tostring(err))
+        return
+    end
 end
 
 print("[Loader] Script for '" .. key .. "' loaded successfully.")
